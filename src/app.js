@@ -3,6 +3,8 @@ import cors from "cors"
 import dotenv from "dotenv";
 import { connectDb } from "./utils/Db.js";
 import { userroute } from "./routes/User.route.js";
+import cookieParser from "cookie-parser";
+
 dotenv.config();
 
 
@@ -10,6 +12,7 @@ const app = express();
 const port = 3000;
 app.use(cors());
 app.use(express.json())
+app.use(cookieParser())
 
 
 connectDb()
