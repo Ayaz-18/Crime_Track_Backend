@@ -1,9 +1,10 @@
 import express from "express";
 import cors from "cors"
 import dotenv from "dotenv";
-import { connectDb } from "./utils/Db.js";
+import { connectDB } from "./utils/Db.js";
 import { userroute } from "./routes/User.route.js";
 import cookieParser from "cookie-parser";
+import { reportRoute } from "./routes/Report.route.js"; 
 
 dotenv.config();
 
@@ -15,7 +16,7 @@ app.use(express.json())
 app.use(cookieParser())
 
 
-connectDb()
+connectDB()
 .then(()=>{
   console.log("db connected successfully")
   app.listen(port, () => {
@@ -28,6 +29,6 @@ connectDb()
 })
  
 app.use("/api/auth",userroute)
-
+app.use("/api/report",reportRoute)
 
 export default app;
