@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import { connectDB } from "./utils/Db.js";
 import { userroute } from "./routes/User.route.js";
 import cookieParser from "cookie-parser";
-import { reportRoute } from "./routes/Report.route.js"; 
+import { reportRoute } from "./routes/Report.route.js";
 
 dotenv.config();
 
@@ -17,18 +17,18 @@ app.use(cookieParser())
 
 
 connectDB()
-.then(()=>{
-  console.log("db connected successfully")
-  app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+  .then(() => {
+    console.log("db connected successfully")
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
 
-})
-.catch(()=>{
-  console.log("issue in db connection")
-})
- 
-app.use("/api/auth",userroute)
-app.use("/api/report",reportRoute)
+  })
+  .catch(() => {
+    console.log("issue in db connection")
+  })
+
+app.use("/api/auth", userroute)
+app.use("/api/report", reportRoute)
 
 export default app;
