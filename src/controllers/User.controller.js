@@ -116,40 +116,124 @@ const User_signout = (req, res) => {
 }
 
 const forgot_password = async (req, res) => {
-    try {
-        const { email } = req.body;
-        if (!email) {
-            return res.status(400).json({
-                msg: "Please enter your email"
-            });
-        }
-        const hash_email = hash(email);
-        const user = await User.findOne({ hash_email });
-        if (!user) {
-            return res.status(404).json({
-                msg: "User not exist"
-            });
-        }
-        // generate reset token
-        const reset_token = jwt.sign(
-            { hash_email: user.hash_email },
-            process.env.JWT_SECRET,
-            { expiresIn: "1h" }
-        );
-        // send reset token to user's email (you can use nodemailer or any email service)
-        // for demo purpose we will return the reset token in response
-        return res.status(200).json({
-            msg: "Reset token generated successfully",
-            reset_token
-        });
-    } catch (error) {
-        console.log(error); 
-        res.status(500).json({
-            msg: "Something went wrong"
-        });
-    }
-}
+  try {
 
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        msg: "Please enter your email"
+      });
+    }
+
+    const hash_email = hash(email);
+
+    const user = await User.findOne({ hash_email });
+
+    if (!user) {
+      return res.status(404).json({
+        msg: "User does not exist"
+      });
+    }
+
+    const otp = generateOTP();
+
+    otpStore[email] = {
+      otp,
+      expires: Date.now() + 5 * 60 * 1000
+    };
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Password Reset OTP",
+      text: `Your password reset OTP is ${otp}`
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({
+      msg: "OTP sent to your email"
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      msg: "Something went wrong"
+    });
+  }
+};
+const verifyForgotOTP = (req, res) => {
+  try {
+
+    const { email, otp } = req.body;
+
+    const storedData = otpStore[email];
+
+    if (!storedData) {
+      return res.status(400).json({
+        msg: "OTP session expired"
+      });
+    }
+
+    if (Date.now() > storedData.expires) {
+      delete otpStore[email];
+
+      return res.status(400).json({
+        msg: "OTP expired"
+      });
+    }
+
+    if (storedData.otp !== otp) {
+      return res.status(400).json({
+        msg: "Invalid OTP"
+      });
+    }
+
+    res.json({
+      msg: "OTP verified successfully"
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      msg: "Something went wrong"
+    });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+
+    const { email, newPassword } = req.body;
+
+    const hash_email = hash(email);
+
+    const user = await User.findOne({ hash_email });
+
+    if (!user) {
+      return res.status(404).json({
+        msg: "User not found"
+      });
+    }
+
+    user.password = newPassword;
+
+    await user.save();
+
+    delete otpStore[email];
+
+    res.json({
+      msg: "Password reset successfully"
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      msg: "Something went wrong"
+    });
+  }
+};
 
 
 
@@ -208,4 +292,4 @@ const verifySignupOTP = async (req, res) => {
 
 };
 
-export  {User_sign_up,User_signin,User_signout,forgot_password,verifySignupOTP};
+export  {User_sign_up,User_signin,User_signout,forgot_password,verifySignupOTP,verifyForgotOTP,resetPassword};
