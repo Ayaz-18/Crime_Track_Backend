@@ -1,36 +1,54 @@
 import User from "../models/User.models.js";
 import { encrypt,decrypt,hash } from "../utils/Encryption.js";
 import jwt from 'jsonwebtoken';
+import transporter from "../utils/Mail_transporteer.js";
+import { generateOTP } from "../utils/Otp.generator.js";
+import otpStore from "../utils/Otp.storage.js";
+import signupStore from "../utils/Signup.store.js";
+const User_sign_up = async (req, res) => {
+  try {
 
+    const { email, password } = req.body;
 
-const User_sign_up=async(req,res)=>{
-   try {
-     const{email,password}=req.body
-     const encrypted_email=encrypt(email);
-     const hash_email=hash(email);
-     const exist_user=await User.findOne({hash_email});
-     
-     if(exist_user){
-         return res.status(400).json({
-             msg:"user exist"
-         })
-     }
-     const user=await User.create(
-         {
-             enc_email:encrypted_email,
-             hash_email:hash_email,
-             password
-         }
-     )
-     res.json({msg:"signup success"})
-   } catch (error) {
-    console.log(error)
+    const hash_email = hash(email);
+
+    const exist_user = await User.findOne({ hash_email });
+
+    if (exist_user) {
+      return res.status(400).json({
+        msg: "User already exists"
+      });
+    }
+
+    const otp = generateOTP();
+
+    signupStore[email] = {
+      email,
+      password,
+      otp,
+      expires: Date.now() + 5 * 60 * 1000
+    };
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Verify your account",
+      text: `Your OTP is ${otp}`
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({
+      msg: "OTP sent to your email"
+    });
+
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
-        error:"Somthing went wrong"
-    })
-   }
-}
-
+      msg: "Something went wrong"
+    });
+  }
+};
 const User_signin = async (req, res) => {
   try {
 
@@ -136,4 +154,58 @@ const forgot_password = async (req, res) => {
 
 
 
-export  {User_sign_up,User_signin,User_signout,forgot_password};
+ 
+
+const verifySignupOTP = async (req, res) => {
+
+  try {
+
+    const { email, otp } = req.body;
+
+    const storedData = signupStore[email];
+
+    if (!storedData) {
+      return res.status(400).json({
+        msg: "Signup session expired"
+      });
+    }
+
+    if (Date.now() > storedData.expires) {
+      delete signupStore[email];
+
+      return res.status(400).json({
+        msg: "OTP expired"
+      });
+    }
+
+    if (storedData.otp !== otp) {
+      return res.status(400).json({
+        msg: "Invalid OTP"
+      });
+    }
+
+    const encrypted_email = encrypt(email);
+    const hash_email = hash(email);
+
+    await User.create({
+      enc_email: encrypted_email,
+      hash_email: hash_email,
+      password: storedData.password
+    });
+
+    delete signupStore[email];
+
+    res.json({
+      msg: "Account created successfully"
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      msg: "Something went wrong"
+    });
+  }
+
+};
+
+export  {User_sign_up,User_signin,User_signout,forgot_password,verifySignupOTP};
