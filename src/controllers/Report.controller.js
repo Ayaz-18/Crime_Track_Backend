@@ -17,7 +17,7 @@ const createReport = async (req, res) => {
       description,
       location,
       priority: formattedPriority,
-      file: req.file ? req.file.path : null,
+      file: req.files && req.files.length > 0 ? req.files[0].path : null,
       user: user._id
     });
 

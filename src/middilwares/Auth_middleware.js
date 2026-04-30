@@ -7,7 +7,8 @@ const auth_user = (req, res, next) => {
   if (!token && req.headers.authorization) {
     token = req.headers.authorization.split(" ")[1];
   }
-
+  console.log("Token from cookie:", req.cookies.token); // Debugging line to check token from cookie
+  console.log("Token from header:", req.headers.authorization); // Debugging line to check token from header
   if (!token) {
     return res.status(401).json({
       msg: "Unauthorized"

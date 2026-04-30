@@ -1,5 +1,5 @@
 import User from "../models/User.models.js";
-import { encrypt,decrypt,hash } from "../utils/Encryption.js";
+import { encrypt, decrypt, hash } from "../utils/Encryption.js";
 import jwt from 'jsonwebtoken';
 import transporter from "../utils/Mail_transporteer.js";
 import { generateOTP } from "../utils/Otp.generator.js";
@@ -90,12 +90,13 @@ const User_signin = async (req, res) => {
       .cookie("token", token, {
         httpOnly: true,
         secure: false,
-        sameSite: "strict",
+        sameSite: "lax",   // 🔥 CHANGE THIS
         maxAge: 7 * 24 * 60 * 60 * 1000
       })
       .status(200)
       .json({
-        msg: "user logged in successfully"
+        msg: "user logged in successfully",
+        token: token
       });
 
   } catch (error) {
@@ -106,13 +107,13 @@ const User_signin = async (req, res) => {
   }
 };
 const User_signout = (req, res) => {
-    res.clearCookie("token", {
-        httpOnly: true,
-        secure: false,
-        sameSite: "strict"
-    }).status(200).json({
-        msg: "user logged out successfully"
-    });
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: false,
+    sameSite: "strict"
+  }).status(200).json({
+    msg: "user logged out successfully"
+  });
 }
 
 const forgot_password = async (req, res) => {
@@ -238,12 +239,10 @@ const resetPassword = async (req, res) => {
 
 
 
- 
+
 
 const verifySignupOTP = async (req, res) => {
-
   try {
-
     const { email, otp } = req.body;
 
     const storedData = signupStore[email];
@@ -256,13 +255,12 @@ const verifySignupOTP = async (req, res) => {
 
     if (Date.now() > storedData.expires) {
       delete signupStore[email];
-
       return res.status(400).json({
         msg: "OTP expired"
       });
     }
 
-    if (storedData.otp !== otp) {
+    if (String(storedData.otp) !== String(otp)) {
       return res.status(400).json({
         msg: "Invalid OTP"
       });
@@ -271,7 +269,7 @@ const verifySignupOTP = async (req, res) => {
     const encrypted_email = encrypt(email);
     const hash_email = hash(email);
 
-    await User.create({
+    const newUser = await User.create({
       enc_email: encrypted_email,
       hash_email: hash_email,
       password: storedData.password
@@ -279,9 +277,26 @@ const verifySignupOTP = async (req, res) => {
 
     delete signupStore[email];
 
-    res.json({
-      msg: "Account created successfully"
-    });
+    // ✅ Generate JWT token for new user
+    const token = jwt.sign(
+      { hash_email: newUser.hash_email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // ✅ Return token in response
+    return res
+      .cookie("token", token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000
+      })
+      .status(200)
+      .json({
+        msg: "Account created successfully",
+        token: token  // 🔥 THIS WAS MISSING
+      });
 
   } catch (error) {
     console.log(error);
@@ -289,7 +304,6 @@ const verifySignupOTP = async (req, res) => {
       msg: "Something went wrong"
     });
   }
-
 };
 
-export  {User_sign_up,User_signin,User_signout,forgot_password,verifySignupOTP,verifyForgotOTP,resetPassword};
+export { User_sign_up, User_signin, User_signout, forgot_password, verifySignupOTP, verifyForgotOTP, resetPassword };
