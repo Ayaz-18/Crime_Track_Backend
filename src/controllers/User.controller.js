@@ -110,11 +110,11 @@ const User_signout = (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     secure: false,
-    sameSite: "strict"
+    sameSite: "lax",   // 🔥 MUST MATCH LOGIN
   }).status(200).json({
     msg: "user logged out successfully"
   });
-}
+};
 
 const forgot_password = async (req, res) => {
   try {
